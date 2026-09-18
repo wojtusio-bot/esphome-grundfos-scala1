@@ -1,37 +1,100 @@
 # ESPHome Grundfos SCALA1
 
-Experimental local Bluetooth integration for **Grundfos SCALA1** pressure boosters using an **ESP32 + ESPHome + Home Assistant**.
+Local Bluetooth integration for **Grundfos SCALA1** pressure boosters using **ESP32 + ESPHome + Home Assistant**.
 
-> Project status: **early v0.1 / reverse engineering in progress**
+> Project status: **experimental external component**
 >
-> The current reference implementation has been physically tested with a SCALA1 3-45 and supports real START/STOP control plus basic state decoding.
+> The reference unit is a SCALA1 3-45. Physical START and STOP are confirmed working.
 
 ## What already works
 
 - BLE connection to SCALA1
-- local control without Grundfos Cloud
+- local operation without Grundfos Cloud
 - physical **START**
 - physical **STOP**
 - pump running state
+- ready / idle state
 - manual STOP state
 - dry-run / no-water state
-- raw diagnostic frame capture
+- raw A4 diagnostics
+- raw frame diagnostics
 - Home Assistant entities through ESPHome
+- reusable ESPHome external component
 
 ## Tested hardware
 
 - Pump: Grundfos SCALA1 3-45
 - Product no.: 99530405
-- Application firmware: 99545258V01.00.02.000 01
-- BLE firmware: 99545256V03.00.05.00 001
+- Application firmware: `99545258V01.00.02.000 01`
+- BLE firmware: `99545256V03.00.05.00 001`
 - ESP32: ESP32-WROOM-32 / esp32dev
 - ESPHome: 2026.9.0
 
 Other SCALA1 variants or firmware versions may behave differently. Please report results in Issues.
 
+## Install as an ESPHome external component
+
+Add the repository:
+
+```yaml
+external_components:
+  - source: github://wojtusio-bot/esphome-grundfos-scala1@main
+    components: [scala1]
+    refresh: 1h
+```
+
+Configure BLE:
+
+```yaml
+esp32_ble_tracker:
+
+ble_client:
+  - mac_address: "AA:BB:CC:DD:EE:FF"
+    id: scala1_ble
+    auto_connect: true
+```
+
+Then add SCALA1:
+
+```yaml
+scala1:
+  id: scala1_pump
+  ble_client_id: scala1_ble
+  update_interval: 5s
+
+  control:
+    name: "SCALA1 Control"
+
+  connected:
+    name: "SCALA1 BLE Connected"
+
+  running:
+    name: "SCALA1 Pump Running"
+
+  no_water:
+    name: "SCALA1 No Water"
+
+  manual_stop:
+    name: "SCALA1 Manual STOP"
+
+  state:
+    name: "SCALA1 State"
+
+  state_code:
+    name: "SCALA1 State Code"
+```
+
+The full example, including optional diagnostics, is here:
+
+- [examples/scala1_external_component.yaml](examples/scala1_external_component.yaml)
+
+The original large YAML reference implementation remains here:
+
+- [examples/scala1_esp32.yaml](examples/scala1_esp32.yaml)
+
 ## BLE protocol
 
-The pump advertises the Grundfos service:
+The pump uses:
 
 - Service UUID: `FE5D`
 - Characteristic UUID: `859CFFD1-036E-432A-AA28-1A0085B87BA9`
@@ -47,7 +110,7 @@ A key discovery is that START/STOP is **not sent as one long BLE write**. Grundf
 4. synchronization frame fragment 1
 5. synchronization frame fragment 2
 
-This split is necessary for reliable physical control.
+The external component reproduces that sequence.
 
 See [docs/protocol.md](docs/protocol.md).
 
@@ -60,20 +123,16 @@ See [docs/protocol.md](docs/protocol.md).
 | `01 01` | Manual STOP |
 | `08 01` | No water / dry-run fault |
 
-## Quick start
+## Optional diagnostics
 
-The current known-working reference implementation is in:
+The component can expose:
 
-- [examples/scala1_esp32.yaml](examples/scala1_esp32.yaml)
+- `a4_raw`
+- `a4_hex`
+- `rx_frames`
+- `last_frame`
 
-You need:
-
-- ESP32 with Bluetooth
-- ESPHome
-- Home Assistant
-- the Bluetooth MAC address of your SCALA1
-
-Do **not** publish your Wi-Fi password, Home Assistant API keys, or other secrets in GitHub.
+The meaning of A4 is **not yet confirmed**, so it remains raw diagnostic data.
 
 ## Roadmap
 
@@ -84,13 +143,14 @@ Do **not** publish your Wi-Fi password, Home Assistant API keys, or other secret
 - [x] running / idle / manual stop / dry-run states
 - [x] raw frame diagnostics
 - [x] protocol notes
+- [x] reusable ESPHome external component
 
 ### v0.2
-- [ ] convert reference YAML into a reusable ESPHome external component
+- [ ] test the external component on additional SCALA1 units
 - [ ] automatic pump discovery
-- [ ] retry / command acknowledgement logic
-- [ ] better reconnect handling
-- [ ] compatibility testing with more SCALA1 firmware versions
+- [ ] stronger command acknowledgement / retry logic
+- [ ] improved reconnect handling
+- [ ] compatibility matrix for more firmware versions
 
 ### v0.3
 - [ ] reverse engineer additional Grundfos GO parameters
