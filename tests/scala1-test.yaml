@@ -1,0 +1,61 @@
+esphome:
+  name: scala1-test
+
+esp32:
+  board: esp32dev
+  framework:
+    type: esp-idf
+
+logger:
+  level: DEBUG
+
+external_components:
+  - source:
+      type: local
+      path: ../components
+    components: [scala1]
+
+esp32_ble_tracker:
+
+ble_client:
+  - mac_address: "AA:BB:CC:DD:EE:FF"
+    id: scala1_ble
+    auto_connect: true
+
+scala1:
+  id: scala1_pump
+  ble_client_id: scala1_ble
+  update_interval: 5s
+
+  control:
+    name: "SCALA1 Control"
+
+  connected:
+    name: "SCALA1 BLE Connected"
+
+  running:
+    name: "SCALA1 Pump Running"
+
+  no_water:
+    name: "SCALA1 No Water"
+
+  manual_stop:
+    name: "SCALA1 Manual STOP"
+
+  state:
+    name: "SCALA1 State"
+
+  state_code:
+    name: "SCALA1 State Code"
+
+  a4_raw:
+    name: "SCALA1 A4 RAW"
+
+  a4_hex:
+    name: "SCALA1 A4 HEX"
+
+  rx_frames:
+    name: "SCALA1 RX Frames"
+
+  last_frame:
+    name: "SCALA1 Last Frame"
