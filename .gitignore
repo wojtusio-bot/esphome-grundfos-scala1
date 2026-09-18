@@ -1,0 +1,21 @@
+# ESPHome
+.esphome/
+secrets.yaml
+*.bin
+
+# Python
+__pycache__/
+*.py[cod]
+
+# Editors / OS
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+
+# Captures and private diagnostics
+*.cfa
+*.pcap
+*.pcapng
+*.zip
+bugreport-*
