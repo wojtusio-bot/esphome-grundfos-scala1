@@ -1,0 +1,28 @@
+name: ESPHome validation
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  compile:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install ESPHome
+        run: pip install "esphome==2026.9.0"
+
+      - name: Validate configuration
+        run: esphome config tests/scala1-test.yaml
+
+      - name: Compile component
+        run: esphome compile tests/scala1-test.yaml
