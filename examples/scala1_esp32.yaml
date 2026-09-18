@@ -1,0 +1,382 @@
+substitutions:
+  device_name: scala1
+  friendly_name: Grundfos SCALA1
+  pump_mac: "D8:71:4D:7B:72:D8"
+
+esphome:
+  name: ${device_name}
+  friendly_name: ${friendly_name}
+
+esp32:
+  board: esp32dev
+  framework:
+    type: esp-idf
+
+logger:
+  level: DEBUG
+
+api:
+  encryption:
+    key: !secret api_encryption_key
+
+ota:
+  - platform: esphome
+
+wifi:
+  ssid: !secret wifi_ssid
+  password: !secret wifi_password
+
+esp32_ble_tracker:
+  scan_parameters:
+    interval: 500ms
+    window: 200ms
+    active: true
+    continuous: true
+
+globals:
+  - id: scala1_ready
+    type: bool
+    restore_value: no
+    initial_value: "false"
+
+  - id: scala1_rx_count
+    type: int
+    restore_value: no
+    initial_value: "0"
+
+  - id: scala1_command_busy
+    type: bool
+    restore_value: no
+    initial_value: "false"
+
+ble_client:
+  - mac_address: ${pump_mac}
+    id: scala1_ble
+    auto_connect: true
+
+    on_connect:
+      then:
+        - lambda: |-
+            id(scala1_connected)->publish_state(true);
+            id(scala1_ready) = false;
+            id(scala1_command_busy) = false;
+            id(scala1_ble).pair();
+
+        - delay: 6s
+
+        - if:
+            condition:
+              lambda: return id(scala1_ble).connected();
+            then:
+              - lambda: id(scala1_ready) = true;
+
+    on_disconnect:
+      then:
+        - lambda: |-
+            id(scala1_ready) = false;
+            id(scala1_command_busy) = false;
+            id(scala1_connected)->publish_state(false);
+            id(scala1_running)->publish_state(false);
+            id(scala1_no_water)->publish_state(false);
+            id(scala1_manual_stop)->publish_state(false);
+            id(scala1_state_text)->publish_state("Disconnected");
+
+script:
+  - id: scala1_send_stop
+    mode: single
+    then:
+      - if:
+          condition:
+            lambda: |-
+              return id(scala1_ready) &&
+                     id(scala1_ble).connected() &&
+                     !id(scala1_command_busy);
+          then:
+            - lambda: id(scala1_command_busy) = true;
+
+            - ble_client.ble_write:
+                id: scala1_ble
+                service_uuid: "FE5D"
+                characteristic_uuid: "859CFFD1-036E-432A-AA28-1A0085B87BA9"
+                value:
+                  [0x27,0x14,0xE7,0xF8,0x0A,0x90,0x56,0x00,0x06,0x01,
+                   0x2F,0x01,0x00,0x00,0x07,0x01,0x01,0x00,0x00,0x00]
+
+            - delay: 2ms
+
+            - ble_client.ble_write:
+                id: scala1_ble
+                service_uuid: "FE5D"
+                characteristic_uuid: "859CFFD1-036E-432A-AA28-1A0085B87BA9"
+                value: [0x00,0x00,0x6A,0x76]
+
+            - delay: 30ms
+
+            - ble_client.ble_write:
+                id: scala1_ble
+                service_uuid: "FE5D"
+                characteristic_uuid: "859CFFD1-036E-432A-AA28-1A0085B87BA9"
+                value:
+                  [0x27,0x17,0xE7,0xF8,0x0A,0x93,0x54,0x00,0x01,0x00,
+                   0xDA,0x01,0x00,0x00,0x0A,0x05,0x0A,0x00,0x0A,0x00]
+
+            - delay: 2ms
+
+            - ble_client.ble_write:
+                id: scala1_ble
+                service_uuid: "FE5D"
+                characteristic_uuid: "859CFFD1-036E-432A-AA28-1A0085B87BA9"
+                value: [0x00,0x00,0x00,0x00,0x00,0x55,0xF8]
+
+            - delay: 400ms
+            - lambda: id(scala1_command_busy) = false;
+
+  - id: scala1_send_start
+    mode: single
+    then:
+      - if:
+          condition:
+            lambda: |-
+              return id(scala1_ready) &&
+                     id(scala1_ble).connected() &&
+                     !id(scala1_command_busy);
+          then:
+            - lambda: id(scala1_command_busy) = true;
+
+            - ble_client.ble_write:
+                id: scala1_ble
+                service_uuid: "FE5D"
+                characteristic_uuid: "859CFFD1-036E-432A-AA28-1A0085B87BA9"
+                value:
+                  [0x27,0x14,0xE7,0xF8,0x0A,0x90,0x56,0x00,0x06,0x01,
+                   0x2F,0x01,0x00,0x00,0x07,0x01,0x00,0x00,0x00,0x00]
+
+            - delay: 2ms
+
+            - ble_client.ble_write:
+                id: scala1_ble
+                service_uuid: "FE5D"
+                characteristic_uuid: "859CFFD1-036E-432A-AA28-1A0085B87BA9"
+                value: [0x00,0x00,0x2F,0xD6]
+
+            - delay: 30ms
+
+            - ble_client.ble_write:
+                id: scala1_ble
+                service_uuid: "FE5D"
+                characteristic_uuid: "859CFFD1-036E-432A-AA28-1A0085B87BA9"
+                value:
+                  [0x27,0x17,0xE7,0xF8,0x0A,0x93,0x54,0x00,0x01,0x00,
+                   0xDA,0x01,0x00,0x00,0x0A,0x05,0x0A,0x00,0x0A,0x00]
+
+            - delay: 2ms
+
+            - ble_client.ble_write:
+                id: scala1_ble
+                service_uuid: "FE5D"
+                characteristic_uuid: "859CFFD1-036E-432A-AA28-1A0085B87BA9"
+                value: [0x00,0x00,0x00,0x00,0x00,0x55,0xF8]
+
+            - delay: 400ms
+            - lambda: id(scala1_command_busy) = false;
+
+switch:
+  - platform: template
+    name: "SCALA1 Control"
+    id: scala1_control
+    icon: mdi:pump
+    optimistic: false
+    turn_on_action:
+      - script.execute: scala1_send_start
+    turn_off_action:
+      - script.execute: scala1_send_stop
+
+button:
+  - platform: template
+    name: "SCALA1 START"
+    on_press:
+      - script.execute: scala1_send_start
+
+  - platform: template
+    name: "SCALA1 STOP"
+    on_press:
+      - script.execute: scala1_send_stop
+
+binary_sensor:
+  - platform: template
+    name: "SCALA1 BLE Connected"
+    id: scala1_connected
+    device_class: connectivity
+
+  - platform: template
+    name: "SCALA1 Pump Running"
+    id: scala1_running
+    device_class: running
+
+  - platform: template
+    name: "SCALA1 No Water"
+    id: scala1_no_water
+    device_class: problem
+
+  - platform: template
+    name: "SCALA1 Manual STOP"
+    id: scala1_manual_stop
+
+sensor:
+  - platform: template
+    name: "SCALA1 A4 RAW"
+    id: scala1_a4_raw
+    accuracy_decimals: 0
+    update_interval: never
+
+  - platform: template
+    name: "SCALA1 RX Frames"
+    id: scala1_rx_counter
+    accuracy_decimals: 0
+    update_interval: 10s
+    lambda: return id(scala1_rx_count);
+
+text_sensor:
+  - platform: template
+    name: "SCALA1 State"
+    id: scala1_state_text
+
+  - platform: template
+    name: "SCALA1 State Code"
+    id: scala1_state_code
+
+  - platform: template
+    name: "SCALA1 A4 HEX"
+    id: scala1_a4_hex
+
+  - platform: template
+    name: "SCALA1 Last Frame"
+    id: scala1_last_rx
+
+  - platform: ble_client
+    ble_client_id: scala1_ble
+    service_uuid: "FE5D"
+    characteristic_uuid: "859CFFD1-036E-432A-AA28-1A0085B87BA9"
+    id: scala1_notify
+    internal: true
+    notify: true
+    update_interval: never
+
+    on_notify:
+      then:
+        - lambda: |-
+            static std::vector<uint8_t> frame;
+            static size_t expected_len = 0;
+
+            for (size_t i = 0; i < x.size(); i++) {
+              uint8_t b = static_cast<uint8_t>(static_cast<unsigned char>(x[i]));
+
+              if (frame.empty() && b != 0x24) {
+                continue;
+              }
+
+              frame.push_back(b);
+
+              if (frame.size() == 2) {
+                expected_len = static_cast<size_t>(frame[1]) + 4;
+              }
+            }
+
+            if (expected_len == 0 || frame.size() < expected_len) {
+              return;
+            }
+
+            id(scala1_rx_count)++;
+
+            std::string hex;
+            char tmp[4];
+
+            for (size_t i = 0; i < expected_len; i++) {
+              snprintf(tmp, sizeof(tmp), "%02X", frame[i]);
+              if (i > 0) hex += " ";
+              hex += tmp;
+            }
+
+            id(scala1_last_rx)->publish_state(hex);
+
+            if (expected_len == 22 && frame.size() >= 15 && frame[8] == 0x2F) {
+              uint8_t state1 = frame[13];
+              uint8_t state2 = frame[14];
+
+              char state_hex[16];
+              snprintf(state_hex, sizeof(state_hex), "%02X %02X", state1, state2);
+              id(scala1_state_code)->publish_state(state_hex);
+
+              if (state1 == 0x01 && state2 == 0x00) {
+                id(scala1_running)->publish_state(true);
+                id(scala1_no_water)->publish_state(false);
+                id(scala1_manual_stop)->publish_state(false);
+                id(scala1_control)->publish_state(true);
+                id(scala1_state_text)->publish_state("Running");
+              } else if (state1 == 0x6D && state2 == 0x01) {
+                id(scala1_running)->publish_state(false);
+                id(scala1_no_water)->publish_state(false);
+                id(scala1_manual_stop)->publish_state(false);
+                id(scala1_control)->publish_state(true);
+                id(scala1_state_text)->publish_state("Ready / idle");
+              } else if (state1 == 0x01 && state2 == 0x01) {
+                id(scala1_running)->publish_state(false);
+                id(scala1_no_water)->publish_state(false);
+                id(scala1_manual_stop)->publish_state(true);
+                id(scala1_control)->publish_state(false);
+                id(scala1_state_text)->publish_state("Manual STOP");
+              } else if (state1 == 0x08 && state2 == 0x01) {
+                id(scala1_running)->publish_state(false);
+                id(scala1_no_water)->publish_state(true);
+                id(scala1_manual_stop)->publish_state(false);
+                id(scala1_control)->publish_state(true);
+                id(scala1_state_text)->publish_state("No water / dry-run");
+              } else {
+                id(scala1_running)->publish_state(false);
+                id(scala1_no_water)->publish_state(false);
+                id(scala1_manual_stop)->publish_state(false);
+                std::string state = "Unknown: ";
+                state += state_hex;
+                id(scala1_state_text)->publish_state(state);
+              }
+            } else if (expected_len == 26 && frame.size() >= 15 && frame[8] == 0xA4) {
+              uint8_t low = frame[13];
+              uint8_t high = frame[14];
+              uint16_t raw = static_cast<uint16_t>(low) |
+                             (static_cast<uint16_t>(high) << 8);
+
+              char a4_hex[16];
+              snprintf(a4_hex, sizeof(a4_hex), "%02X %02X", low, high);
+
+              id(scala1_a4_raw)->publish_state(raw);
+              id(scala1_a4_hex)->publish_state(a4_hex);
+            }
+
+            frame.clear();
+            expected_len = 0;
+
+interval:
+  - interval: 5s
+    then:
+      - if:
+          condition:
+            lambda: |-
+              return id(scala1_ready) &&
+                     id(scala1_ble).connected() &&
+                     !id(scala1_command_busy);
+          then:
+            - ble_client.ble_write:
+                id: scala1_ble
+                service_uuid: "FE5D"
+                characteristic_uuid: "859CFFD1-036E-432A-AA28-1A0085B87BA9"
+                value:
+                  [0x27,0x07,0xE7,0xF8,0x0A,0x03,0x56,0x00,0x08,0x24,0x94]
+
+            - delay: 800ms
+
+            - ble_client.ble_write:
+                id: scala1_ble
+                service_uuid: "FE5D"
+                characteristic_uuid: "859CFFD1-036E-432A-AA28-1A0085B87BA9"
+                value:
+                  [0x27,0x07,0xE7,0xF8,0x0A,0x03,0x5B,0x00,0xA4,0x12,0xA3]
