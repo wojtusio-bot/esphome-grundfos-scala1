@@ -1,0 +1,82 @@
+substitutions:
+  device_name: scala1
+  friendly_name: Grundfos SCALA1
+  pump_mac: "AA:BB:CC:DD:EE:FF"
+
+esphome:
+  name: ${device_name}
+  friendly_name: ${friendly_name}
+
+esp32:
+  board: esp32dev
+  framework:
+    type: esp-idf
+
+logger:
+  level: DEBUG
+
+api:
+  encryption:
+    key: !secret api_encryption_key
+
+ota:
+  - platform: esphome
+
+wifi:
+  ssid: !secret wifi_ssid
+  password: !secret wifi_password
+
+external_components:
+  - source: github://wojtusio-bot/esphome-grundfos-scala1@main
+    components: [scala1]
+    refresh: 1h
+
+esp32_ble_tracker:
+  scan_parameters:
+    interval: 500ms
+    window: 200ms
+    active: true
+    continuous: true
+
+ble_client:
+  - mac_address: ${pump_mac}
+    id: scala1_ble
+    auto_connect: true
+
+scala1:
+  id: scala1_pump
+  ble_client_id: scala1_ble
+  update_interval: 5s
+
+  control:
+    name: "SCALA1 Control"
+
+  connected:
+    name: "SCALA1 BLE Connected"
+
+  running:
+    name: "SCALA1 Pump Running"
+
+  no_water:
+    name: "SCALA1 No Water"
+
+  manual_stop:
+    name: "SCALA1 Manual STOP"
+
+  state:
+    name: "SCALA1 State"
+
+  state_code:
+    name: "SCALA1 State Code"
+
+  a4_raw:
+    name: "SCALA1 A4 RAW"
+
+  a4_hex:
+    name: "SCALA1 A4 HEX"
+
+  rx_frames:
+    name: "SCALA1 RX Frames"
+
+  last_frame:
+    name: "SCALA1 Last Frame"
